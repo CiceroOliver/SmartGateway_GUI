@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+message Message {
+    string sensor_id = 1;   
+    bool status = 2;
+    string comando = 3;       
+    string payload = 4;          
+}
+
+message MessageOutWrapper {
+    Message message = 1;
+}
