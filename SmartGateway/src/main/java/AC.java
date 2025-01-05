@@ -5,6 +5,9 @@ import java.io.*;
 import java.net.*;
 import java.nio.*;
 import java.nio.channels.*;
+import java.util.Arrays;
+import java.util.List;
+
 import com.google.protobuf.InvalidProtocolBufferException;
 
 public class AC {
@@ -20,27 +23,42 @@ public class AC {
     private volatile int Temperatura = 25;
     private String ID = "Ar-condicionado";
     private volatile String modo = "auto";
+    List<String> Modos = Arrays.asList("auto", "heat", "cool", "dry");
     private volatile boolean lista = false;
-    //COOL, HEAT, AUTO, DRY 
-    private volatile int FanSpeed = 0;
+    private volatile boolean modeSelected = false;
+    private volatile int FanSpeed = 1;
     
     public AC() {
         this.gatewayHost = null;
         this.gatewayPort = -1;
     }
 
-    public boolean ligar(){
-        return true;
+    public void ligar(){
+        status = true;
     }
 
-    public boolean desligar(){
-        return false;
+    public void desligar(){
+        status = false;
     }
 
-    public void setTemperatura(int valor){
+    public boolean setTemperatura(int valor){
         //min 16, max 32
         if (valor  <= 32 && valor >= 16) {
             Temperatura = valor;
+            return true;
+        }else{
+            return false;
+        }
+
+    }
+
+    public boolean setFanSpeed(int valor){
+        if(valor < 6 && valor > 0){
+            FanSpeed = valor;
+            return true;
+        }
+        else{
+            return false;
         }
     }
 
@@ -49,10 +67,186 @@ public class AC {
          modo = novo_modo;
     }
 
-    public void setFanSpeed(int valor){
-        if(valor > 0 && valor < 6){
-            FanSpeed = valor;
+    public void isOff(){
+        try {
+            // Criar a mensagem no formato id:status:payload
+            String payload = "DESLIGADO\n" + "Ultimo estado - " + "Modo: " + modo + "; Temperatura: " + Temperatura + "; Fan Speed:" + FanSpeed;
+            String comando = "status, ligar, desligar, modo, temperatura"; 
+
+            // Cria a mensagem Protobuf
+            Message message = Message.newBuilder()
+                    .setSensorId(ID)  // ID do Sensor
+                    .setStatus(status)  // Status do Sensor
+                    .setPayload(payload)  // Payload
+                    .setComando(comando)
+                    .build();
+
+            // Serializa a mensagem
+            byte[] messageBytes = message.toByteArray();
+
+            // Envia a mensagem
+            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
+            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
+            buffer.put(messageBytes); // Coloca os dados da mensagem
+            buffer.flip(); // Prepara o buffer para escrita
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer); // Envia a mensagem
+            }
+
+            // Exibe a mensagem enviada para depuração
+            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
+                    ", Status: " + message.getStatus() +
+                    ", Payload: " + message.getPayload());
+        } catch (IOException e) {
+            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
         }
+    }
+
+    public void invalideMode(){
+        try {
+            // Criar a mensagem no formato id:status:payload
+            String payload = "Modo inválido \n" + "Modo: " + modo + "; Temperatura: " + Temperatura + "; Fan speed:" + FanSpeed + "\n" +
+            "Modos válidos: auto, dry, heat, cool" ;
+            String comando = "status, ligar, desligar, modo, temperatura"; 
+
+            // Cria a mensagem Protobuf
+            Message message = Message.newBuilder()
+                    .setSensorId(ID)  // ID do Sensor
+                    .setStatus(status)  // Status do Sensor
+                    .setPayload(payload)  // Payload
+                    .setComando(comando)
+                    .build();
+
+            // Serializa a mensagem
+            byte[] messageBytes = message.toByteArray();
+
+            // Envia a mensagem
+            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
+            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
+            buffer.put(messageBytes); // Coloca os dados da mensagem
+            buffer.flip(); // Prepara o buffer para escrita
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer); // Envia a mensagem
+            }
+
+            // Exibe a mensagem enviada para depuração
+            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
+                    ", Status: " + message.getStatus() +
+                    ", Payload: " + message.getPayload());
+        } catch (IOException e) {
+            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
+        }
+        
+    }
+
+    public void invalideTemperature(){
+        try {
+            // Criar a mensagem no formato id:status:payload
+            String payload = "Temperatura inválida \n" + "Modo: " + modo + "; Temperatura: " + Temperatura + "; Fan speed:" + FanSpeed + "\n" +
+            "Temperaturas válidas: 16 a 32" ;
+            String comando = "status, ligar, desligar, modo, temperatura"; 
+
+            // Cria a mensagem Protobuf
+            Message message = Message.newBuilder()
+                    .setSensorId(ID)  // ID do Sensor
+                    .setStatus(status)  // Status do Sensor
+                    .setPayload(payload)  // Payload
+                    .setComando(comando)
+                    .build();
+
+            // Serializa a mensagem
+            byte[] messageBytes = message.toByteArray();
+
+            // Envia a mensagem
+            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
+            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
+            buffer.put(messageBytes); // Coloca os dados da mensagem
+            buffer.flip(); // Prepara o buffer para escrita
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer); // Envia a mensagem
+            }
+
+            // Exibe a mensagem enviada para depuração
+            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
+                    ", Status: " + message.getStatus() +
+                    ", Payload: " + message.getPayload());
+        } catch (IOException e) {
+            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
+        }
+    }
+
+    public void invalideFanSpeed(){
+        try {
+            // Criar a mensagem no formato id:status:payload
+            String payload = "Fan Speed inválida \n" + "Modo: " + modo + "; Temperatura: " + Temperatura + "; Fan speed:" + FanSpeed + "\n" +
+            "Fan speed válidas: 1 a 5" ;
+            String comando = "status, ligar, desligar, modo, temperatura, fan speed"; 
+
+            // Cria a mensagem Protobuf
+            Message message = Message.newBuilder()
+                    .setSensorId(ID)  // ID do Sensor
+                    .setStatus(status)  // Status do Sensor
+                    .setPayload(payload)  // Payload
+                    .setComando(comando)
+                    .build();
+
+            // Serializa a mensagem
+            byte[] messageBytes = message.toByteArray();
+
+            // Envia a mensagem
+            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
+            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
+            buffer.put(messageBytes); // Coloca os dados da mensagem
+            buffer.flip(); // Prepara o buffer para escrita
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer); // Envia a mensagem
+            }
+
+            // Exibe a mensagem enviada para depuração
+            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
+                    ", Status: " + message.getStatus() +
+                    ", Payload: " + message.getPayload());
+        } catch (IOException e) {
+            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
+        }
+
+    }
+
+
+    public void requestNewName(){
+        try {
+            // Criar a mensagem no formato id:status:payload
+            String payload, comando;
+            payload = ID + " requistando novo nome";
+            comando = "renomear";
+
+            // Cria a mensagem Protobuf
+            Message message = Message.newBuilder()
+                    .setSensorId(ID)  // ID do Sensor
+                    .setStatus(status)  // Status do Sensor
+                    .setPayload(payload)  // Payload
+                    .setComando(comando)
+                    .build();
+
+            // Serializa a mensagem
+            byte[] messageBytes = message.toByteArray();
+
+            // Envia a mensagem
+            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
+            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
+            buffer.put(messageBytes); // Coloca os dados da mensagem
+            buffer.flip(); // Prepara o buffer para escrita
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer); // Envia a mensagem
+            }
+
+            // Exibe a mensagem enviada para depuração
+            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
+                    ", Status: " + message.getStatus() +
+                    ", Payload: " + message.getPayload());
+        } catch (IOException e) {
+            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
+        }   
     }
 
     public void enviarAtualizacao(){
@@ -65,12 +259,33 @@ public class AC {
                 payload = "status,ligar,desligar,modo,fanspeed,temperatura";
                 comando = "listar comandos";
             }
+            else if(modeSelected){
+                if(modo.equals("heat")){
+                    Temperatura = 28;
+                    FanSpeed = 3;
+                } 
+                else if(modo.equals("dry")){
+                    Temperatura = 21;
+                    FanSpeed = 1;
+                }
+                else if (modo.equals("cool")) {
+                    Temperatura = 16;
+                    FanSpeed = 3;
+                }
+                else if(modo.equals("auto")){
+                    Temperatura = 25;
+                    FanSpeed = 2;
+                }
+                payload = "Modo: " + modo + "; Temperatura: " + Temperatura + "; Fan Speed: " + FanSpeed;
+                comando = "status, ligar, desligar, modo, fanspeed, temperatura";
+            }
             else{
-                payload = "Modo: " + modo + "; Temperatura: " + Temperatura ;
+                payload = "Modo: " + modo + "; Temperatura: " + Temperatura + "; Fan Speed: " + FanSpeed;
                 comando = "status, ligar, desligar, modo, fanspeed, temperatura";
             }
             
             lista = false;
+            modeSelected = false;
             // Cria a mensagem Protobuf
             Message message = Message.newBuilder()
                     .setSensorId(ID)  // ID do Sensor
@@ -167,16 +382,19 @@ public class AC {
                         System.out.println("Comando: " + message.getComando());
 
                         String comando = message.getComando();
-
-                        if ("listar".equalsIgnoreCase(comando)){
-                            enviarAtualizacao();
+                        if ("renomear".equals(comando)) {
+                            ID = message.getPayload();
+                        }
+                        else if ("listar".equalsIgnoreCase(comando)){
                             lista = true;
+                            enviarAtualizacao();
+                            
                             System.out.println("Entrou");
                         }
 
                         else if ("listar comandos".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))){
-                            enviarAtualizacao();
                             lista = true;
+                            enviarAtualizacao();
                         }
 
                         else if ("status".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
@@ -196,32 +414,69 @@ public class AC {
                             
                         }
                         
-                        else if("modo".equalsIgnoreCase(comando) && status && (message.getSensorId().equals(ID))){
-                            setModo(message.getPayload()); 
-                            enviarAtualizacao();
-                        }
-
-                        else if("temperatura".equalsIgnoreCase(comando) && status && (message.getSensorId().equals(ID))){
-                            String payload = message.getPayload(); // Exemplo: "25"
-                            try {
-                                Temperatura = Integer.parseInt(payload.trim());
-                                System.out.println("Temperatura: " + Temperatura);
-                                enviarAtualizacao();
-                            } 
-                            catch (NumberFormatException e) {
-                                System.err.println("Erro ao converter payload para int: " + e.getMessage());
+                        else if("modo".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))){
+                            if(status){
+                                boolean found = false;
+                                for(String item : Modos){
+                                    if(item.equals(message.getPayload())){
+                                        setModo(message.getPayload());
+                                        modeSelected = true;
+                                        found = true;
+                                        enviarAtualizacao();
+                                    }
+                                }
+                                if (!found) {
+                                    invalideMode();
+                                }
+                            }else{
+                                isOff();
                             }
                         }
 
-                        else if ("fan speed".equalsIgnoreCase(comando) && status && (message.getSensorId().equals(ID))) {
-                            String payload = message.getPayload(); // Exemplo: "25"
-                            try {
-                                FanSpeed = Integer.parseInt(payload.trim());
-                                System.out.println("FanSpeed: " + FanSpeed);
-                                enviarAtualizacao();
-                            } 
-                            catch (NumberFormatException e) {
-                                System.err.println("Erro ao converter payload para int: " + e.getMessage());
+                        else if("temperatura".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))){
+                            if(status){
+                                String payload = message.getPayload(); // Exemplo: "25"
+                                boolean formatoValidoTemp;
+                                try {
+                                    formatoValidoTemp = setTemperatura(Integer.parseInt(payload.trim()));
+                                    if (formatoValidoTemp) {
+                                        Temperatura = Integer.parseInt(payload.trim());
+                                        enviarAtualizacao();
+                                    }
+                                    else{
+                                        invalideTemperature();
+                                    }
+                                } 
+                                catch (NumberFormatException e) {
+                                    System.err.println("Erro ao converter payload para int: " + e.getMessage());
+                                    invalideTemperature();
+                                }
+                            } else{
+                                isOff();
+                            }
+                        }
+
+                        else if ("fanspeed".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
+                            if(status){
+                                String payload = message.getPayload(); // Exemplo: "25"
+                                boolean formatoValidoSpeed;
+                                try {
+                                    formatoValidoSpeed = setFanSpeed(Integer.parseInt(payload.trim()));
+                                    if (formatoValidoSpeed) {
+                                        FanSpeed = Integer.parseInt(payload.trim());
+                                        enviarAtualizacao();
+                                    }
+                                    else{
+                                        invalideFanSpeed();
+                                    }
+                                    System.out.println("FanSpeed: " + FanSpeed);
+                                } 
+                                catch (NumberFormatException e) {
+                                    System.err.println("Erro ao converter payload para int: " + e.getMessage());
+                                    invalideFanSpeed();
+                                }
+                            } else{
+                                isOff();
                             }
                         }
 
@@ -246,7 +501,7 @@ public class AC {
         try {
             socketChannel = SocketChannel.open(new InetSocketAddress(gatewayHost, gatewayPort));
             System.out.println("Conectado ao Gateway em " + gatewayHost + ":" + gatewayPort);
-            enviarAtualizacao();
+            requestNewName();
             new Thread(this::startReceiving).start();
         } catch (IOException e) {
             System.err.println("Erro na comunicação com o Gateway: " + e.getMessage());

@@ -35,6 +35,41 @@ public class SensorTemp {
     public boolean desligar(){
         return false;
     }
+    public void requestNewName(){
+        try {
+            // Criar a mensagem no formato id:status:payload
+            String payload, comando;
+            payload = ID + " requistando novo nome";
+            comando = "renomear";
+
+            // Cria a mensagem Protobuf
+            Message message = Message.newBuilder()
+                    .setSensorId(ID)  // ID do Sensor
+                    .setStatus(status)  // Status do Sensor
+                    .setPayload(payload)  // Payload
+                    .setComando(comando)
+                    .build();
+
+            // Serializa a mensagem
+            byte[] messageBytes = message.toByteArray();
+
+            // Envia a mensagem
+            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
+            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
+            buffer.put(messageBytes); // Coloca os dados da mensagem
+            buffer.flip(); // Prepara o buffer para escrita
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer); // Envia a mensagem
+            }
+
+            // Exibe a mensagem enviada para depuração
+            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
+                    ", Status: " + message.getStatus() +
+                    ", Payload: " + message.getPayload());
+        } catch (IOException e) {
+            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
+        }   
+    }
 
     public void enviarAtualizacao(){
         try {
@@ -223,6 +258,9 @@ public class SensorTemp {
                         else if ("status".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
                             enviarAtualizacao();
                         }
+                        else if("renomear".equals(comando)){
+                            ID = message.getPayload();
+                        }
 
                     } catch (InvalidProtocolBufferException e) {
                         System.err.println("Erro ao desserializar a mensagem: " + e.getMessage());
@@ -244,7 +282,7 @@ public class SensorTemp {
             socketChannel = SocketChannel.open(new InetSocketAddress(gatewayHost, gatewayPort));
             System.out.println("Conectado ao Gateway em " + gatewayHost + ":" + gatewayPort);
 
-            enviarAtualizacao();
+            requestNewName();
             // Inicia as threads para envio e recepção de mensagens
             new Thread(this::startSending).start();
             new Thread(this::startReceiving).start();

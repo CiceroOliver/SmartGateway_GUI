@@ -35,6 +35,43 @@ public class SensorUmidade {
     public boolean desligar(){
         return false;
     }
+
+    public void requestNewName(){
+        try {
+            // Criar a mensagem no formato id:status:payload
+            String payload, comando;
+            payload = ID + " requistando novo nome";
+            comando = "renomear";
+
+            // Cria a mensagem Protobuf
+            Message message = Message.newBuilder()
+                    .setSensorId(ID)  // ID do Sensor
+                    .setStatus(status)  // Status do Sensor
+                    .setPayload(payload)  // Payload
+                    .setComando(comando)
+                    .build();
+
+            // Serializa a mensagem
+            byte[] messageBytes = message.toByteArray();
+
+            // Envia a mensagem
+            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
+            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
+            buffer.put(messageBytes); // Coloca os dados da mensagem
+            buffer.flip(); // Prepara o buffer para escrita
+            while (buffer.hasRemaining()) {
+                socketChannel.write(buffer); // Envia a mensagem
+            }
+
+            // Exibe a mensagem enviada para depuração
+            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
+                    ", Status: " + message.getStatus() +
+                    ", Payload: " + message.getPayload());
+        } catch (IOException e) {
+            System.err.println("Erro ao enviar mensagem: " + e.getMessage());
+        }   
+    }
+
     public void enviarAtualizacao(){
         try {
             // Criar a mensagem no formato id:status:payload
@@ -201,8 +238,10 @@ public class SensorUmidade {
                         System.out.println("Comando: " + message.getComando());
 
                         String comando = message.getComando();
-
-                        if ("ligar".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
+                        if("renomear".equals(comando)){
+                            ID = message.getPayload();
+                        }
+                        else if ("ligar".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
                             status = true;
                             enviarAtualizacao();
 
@@ -212,7 +251,7 @@ public class SensorUmidade {
                             enviarAtualizacao();
                         }
 
-                        if ("listar".equalsIgnoreCase(comando)){
+                        else if ("listar".equalsIgnoreCase(comando)){
                             lista = true;
                             enviarAtualizacao();
                         }
@@ -246,7 +285,7 @@ public class SensorUmidade {
             socketChannel = SocketChannel.open(new InetSocketAddress(gatewayHost, gatewayPort));
             System.out.println("Conectado ao Gateway em " + gatewayHost + ":" + gatewayPort);
             //seIdentificar();
-            enviarAtualizacao();
+            requestNewName();
             // Inicia as threads para envio e recepção de mensagens
             new Thread(this::startSending).start();
             new Thread(this::startReceiving).start();

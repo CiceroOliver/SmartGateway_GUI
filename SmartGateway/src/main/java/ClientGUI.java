@@ -28,7 +28,7 @@ public class ClientGUI {
     public ClientGUI() throws IOException {
         clientChannel = SocketChannel.open();
         clientChannel.connect(new java.net.InetSocketAddress("127.0.0.1", 4000));
-        executorService = Executors.newFixedThreadPool(2); // 2 threads, uma para enviar e outra para receber
+        executorService = Executors.newFixedThreadPool(3); // 3 threads, uma para enviar e outra para receber
     }
 
     public static void main(String[] args) {
@@ -83,7 +83,8 @@ public class ClientGUI {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String selectedSensor = (String) sensorDropdown.getSelectedItem();
-                sentMessagesLogArea.append("Sensor selecionado: " + selectedSensor + "\n");
+                if(selectedSensor!=null)
+                    sentMessagesLogArea.append("Sensor selecionado: " + selectedSensor + "\n");
     
                 // Solicita os comandos para o sensor selecionado
                 if (selectedSensor != null && !selectedSensor.isEmpty()) {
@@ -93,6 +94,7 @@ public class ClientGUI {
                         e1.printStackTrace();
                     }
                 }
+                
             }
         });
         gbc.gridx = 1;
@@ -125,6 +127,7 @@ public class ClientGUI {
             public void actionPerformed(ActionEvent e) {
                 try {
                     sendMessage();
+                    sensorDropdown.setSelectedItem(null);
                 } catch (IOException e1) {
                     e1.printStackTrace();
                 }
@@ -244,7 +247,6 @@ public class ClientGUI {
                     }else{
                         sentMessagesLogArea.append("Mensagem enviada para o servidor: \n" + message.getSensorId() + "\n" + message.getComando() + "\n" + message.getPayload() + "\n");
                     }
-                        
 
                     payloadField.setText("");
                 } catch (IOException e) {
@@ -289,7 +291,7 @@ public class ClientGUI {
                                 }
                                 //logArea.append("Comando: " + message.getComando() + "\n");
                                 receivedLogArea.append("Payload: " + message.getPayload() + "\n");
-                                receivedLogArea.append("------------------------------------------------- \n");
+                                receivedLogArea.append("-----------------------------------------------------------------------------------------------\n");
                                 break;
                             
                         }

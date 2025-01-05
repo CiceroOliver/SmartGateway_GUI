@@ -14,9 +14,10 @@ import main.java.MessageOuterClass.Message; // Importação da classe Message ge
 public class Gateway {
     public static final int CLIENT_PORT = 4000; // Porta para o Client
     public static final int SENSOR_PORT = 5000; // Porta para os Sensores
-    public static final String HOSTNAME = "127.0.0.1";
+    public static final String HOSTNAME = "0.0.0.0";
     public static final String MULTICAST_GROUP = "230.0.0.0";
     public static final int MULTICAST_PORT = 6000; // Porta para a comunicação multicast
+    private volatile int sufix = 1;
 
     private ServerSocketChannel sensorServerChannel;
     private ServerSocketChannel clientServerChannel;
@@ -105,13 +106,20 @@ public class Gateway {
                     try {
                         Message message = Message.parseFrom(data);
                         String sensorId = message.getSensorId();
+                        String comando = message.getComando();
+                        
                         System.out.println(sensorId);
 
-                        // Adiciona ao mapa sincronizado
-                        sensorMap.putIfAbsent(sensorId, sensorChannel);
-                        System.out.println("Sensor registrado no mapa: ID=" + sensorId);
+                        if (comando.equals("renomear")) {
+                            sensorId = sensorId + "_" + sufix;
+                            sufix = sufix + 1;
+                            feedbackToSensor(sensorId, sensorChannel);
+                            sensorMap.putIfAbsent(sensorId, sensorChannel);
 
-                        forwardToClients(message);
+                        }else{
+                            forwardToClients(message);
+                        }
+
                     } catch (InvalidProtocolBufferException e) {
                         System.out.println("Erro ao desserializar mensagem do Sensor: " + e.getMessage());
                     }
@@ -198,7 +206,7 @@ public class Gateway {
         }
     }
     
-    //Envia uma mensagem dummy para ter todos os no map
+    //Envia uma mensagem dummy para ter todos os sensores no map
     private void forwardToSensors(Message message) {
         synchronized (sensors) {
             if (sensors.isEmpty()) {
@@ -242,6 +250,36 @@ public class Gateway {
             }
         } else {
             System.out.println("Sensor com ID " + sensorId + " não encontrado ou desconectado.");
+            sensorDisconnectedMessage(message.getSensorId());
+        }
+    }
+
+    public void sensorDisconnectedMessage(String Id){
+        synchronized (clients){
+            Message responseMessage = Message.newBuilder()
+                .setSensorId(Id)  // ID do Sensor
+                .setStatus(false)  // Status do Sensor
+                .setComando("nulo") // Define o comando
+                .setPayload("Desconectado, por favor atualize a lista de sensores") // Adiciona a lista de IDs no payload
+                .build();
+    
+        // Serializa a mensagem para enviar ao sensor
+            byte[] responseBytes = responseMessage.toByteArray();
+            for(SocketChannel clientChannel: clients){
+                try {
+                    // Envia a mensagem para o cliente solicitante
+                    ByteBuffer buffer = ByteBuffer.allocate(4 + responseBytes.length);
+                    buffer.putInt(responseBytes.length); // Tamanho da mensagem
+                    buffer.put(responseBytes); // Dados da mensagem
+                    buffer.flip();
+                    while (buffer.hasRemaining()) {
+                        clientChannel.write(buffer); // Envia a mensagem ao cliente
+                    }
+                    System.out.println("Informação de sensor desconectado enviado a: " + clientChannel.getRemoteAddress());
+                } catch (IOException e) {
+                    System.out.println("Erro ao enviar pacote ao cliente: " + e.getMessage());
+                }
+            }
         }
     }
 
@@ -262,6 +300,32 @@ public class Gateway {
                     System.out.println("Erro ao enviar mensagem para Cliente: " + e.getMessage());
                 }
             }
+        }
+    }
+
+    private void feedbackToSensor(String sensorId, SocketChannel sensorChannel) {
+        Message responseMessage = Message.newBuilder()
+                .setSensorId("Gateway")  // ID do Sensor
+                .setStatus(true)  // Status do Sensor
+                .setComando("renomear") // Define o comando
+                .setPayload(sensorId) // Adiciona a lista de IDs no payload
+                .build();
+    
+        // Serializa a mensagem para enviar ao sensor
+        byte[] responseBytes = responseMessage.toByteArray();
+    
+        try {
+            // Envia a mensagem para o cliente solicitante
+            ByteBuffer buffer = ByteBuffer.allocate(4 + responseBytes.length);
+            buffer.putInt(responseBytes.length); // Tamanho da mensagem
+            buffer.put(responseBytes); // Dados da mensagem
+            buffer.flip();
+            while (buffer.hasRemaining()) {
+                sensorChannel.write(buffer); // Envia a mensagem ao cliente
+            }
+            System.out.println("Novo nome atribuido ao sensor: " + sensorChannel.getRemoteAddress());
+        } catch (IOException e) {
+            System.out.println("Erro ao enviar pacote ao sensor: " + e.getMessage());
         }
     }
 
