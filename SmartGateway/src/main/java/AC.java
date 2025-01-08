@@ -13,6 +13,7 @@ import com.google.protobuf.InvalidProtocolBufferException;
 public class AC {
     private static final String MULTICAST_GROUP = "230.0.0.0";
     private static final int MULTICAST_PORT = 6000;
+    private static final int PING_INTERVAL = 5000; // 5 segundos
   
     private String gatewayHost;
     private int gatewayPort;
@@ -22,12 +23,19 @@ public class AC {
     private volatile boolean status = false;  // O status inicial é desligado
     private volatile int Temperatura = 25;
     private String ID = "Ar-condicionado";
+    private String originalID = "Ar-condicionado";
     private volatile String modo = "auto";
     List<String> Modos = Arrays.asList("auto", "heat", "cool", "dry");
     private volatile boolean lista = false;
     private volatile boolean modeSelected = false;
     private volatile int FanSpeed = 1;
+
+
+    private volatile boolean connected = false;
     
+    private Thread receivingThread;
+    private Thread pingThread;
+
     public AC() {
         this.gatewayHost = null;
         this.gatewayPort = -1;
@@ -80,23 +88,7 @@ public class AC {
                     .setPayload(payload)  // Payload
                     .setComando(comando)
                     .build();
-
-            // Serializa a mensagem
-            byte[] messageBytes = message.toByteArray();
-
-            // Envia a mensagem
-            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
-            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
-            buffer.put(messageBytes); // Coloca os dados da mensagem
-            buffer.flip(); // Prepara o buffer para escrita
-            while (buffer.hasRemaining()) {
-                socketChannel.write(buffer); // Envia a mensagem
-            }
-
-            // Exibe a mensagem enviada para depuração
-            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
-                    ", Status: " + message.getStatus() +
-                    ", Payload: " + message.getPayload());
+            sendMessage(message);
         } catch (IOException e) {
             System.err.println("Erro ao enviar mensagem: " + e.getMessage());
         }
@@ -117,22 +109,7 @@ public class AC {
                     .setComando(comando)
                     .build();
 
-            // Serializa a mensagem
-            byte[] messageBytes = message.toByteArray();
-
-            // Envia a mensagem
-            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
-            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
-            buffer.put(messageBytes); // Coloca os dados da mensagem
-            buffer.flip(); // Prepara o buffer para escrita
-            while (buffer.hasRemaining()) {
-                socketChannel.write(buffer); // Envia a mensagem
-            }
-
-            // Exibe a mensagem enviada para depuração
-            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
-                    ", Status: " + message.getStatus() +
-                    ", Payload: " + message.getPayload());
+            sendMessage(message);
         } catch (IOException e) {
             System.err.println("Erro ao enviar mensagem: " + e.getMessage());
         }
@@ -155,21 +132,7 @@ public class AC {
                     .build();
 
             // Serializa a mensagem
-            byte[] messageBytes = message.toByteArray();
-
-            // Envia a mensagem
-            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
-            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
-            buffer.put(messageBytes); // Coloca os dados da mensagem
-            buffer.flip(); // Prepara o buffer para escrita
-            while (buffer.hasRemaining()) {
-                socketChannel.write(buffer); // Envia a mensagem
-            }
-
-            // Exibe a mensagem enviada para depuração
-            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
-                    ", Status: " + message.getStatus() +
-                    ", Payload: " + message.getPayload());
+            sendMessage(message);
         } catch (IOException e) {
             System.err.println("Erro ao enviar mensagem: " + e.getMessage());
         }
@@ -191,21 +154,7 @@ public class AC {
                     .build();
 
             // Serializa a mensagem
-            byte[] messageBytes = message.toByteArray();
-
-            // Envia a mensagem
-            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
-            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
-            buffer.put(messageBytes); // Coloca os dados da mensagem
-            buffer.flip(); // Prepara o buffer para escrita
-            while (buffer.hasRemaining()) {
-                socketChannel.write(buffer); // Envia a mensagem
-            }
-
-            // Exibe a mensagem enviada para depuração
-            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
-                    ", Status: " + message.getStatus() +
-                    ", Payload: " + message.getPayload());
+            sendMessage(message);
         } catch (IOException e) {
             System.err.println("Erro ao enviar mensagem: " + e.getMessage());
         }
@@ -228,22 +177,7 @@ public class AC {
                     .setComando(comando)
                     .build();
 
-            // Serializa a mensagem
-            byte[] messageBytes = message.toByteArray();
-
-            // Envia a mensagem
-            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
-            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
-            buffer.put(messageBytes); // Coloca os dados da mensagem
-            buffer.flip(); // Prepara o buffer para escrita
-            while (buffer.hasRemaining()) {
-                socketChannel.write(buffer); // Envia a mensagem
-            }
-
-            // Exibe a mensagem enviada para depuração
-            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
-                    ", Status: " + message.getStatus() +
-                    ", Payload: " + message.getPayload());
+            sendMessage(message);
         } catch (IOException e) {
             System.err.println("Erro ao enviar mensagem: " + e.getMessage());
         }   
@@ -294,22 +228,7 @@ public class AC {
                     .setComando(comando)
                     .build();
 
-            // Serializa a mensagem
-            byte[] messageBytes = message.toByteArray();
-
-            // Envia a mensagem
-            ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length); // Tamanho + mensagem
-            buffer.putInt(messageBytes.length); // Adiciona o tamanho da mensagem
-            buffer.put(messageBytes); // Coloca os dados da mensagem
-            buffer.flip(); // Prepara o buffer para escrita
-            while (buffer.hasRemaining()) {
-                socketChannel.write(buffer); // Envia a mensagem
-            }
-
-            // Exibe a mensagem enviada para depuração
-            System.out.println("Mensagem enviada: ID: " + message.getSensorId() +
-                    ", Status: " + message.getStatus() +
-                    ", Payload: " + message.getPayload());
+            sendMessage(message);
         } catch (IOException e) {
             System.err.println("Erro ao enviar mensagem: " + e.getMessage());
         }   
@@ -489,28 +408,104 @@ public class AC {
             }
         } catch (IOException e) {
             System.err.println("Erro ao receber mensagem do Gateway: " + e.getMessage());
+            connected = false;
         }
     }
 
     public void startCommunication() {
-        if (gatewayHost == null || gatewayPort == -1) {
-            System.out.println("Gateway não descoberto. Não é possível iniciar a comunicação TCP.");
-            return;
-        }
-
         try {
             socketChannel = SocketChannel.open(new InetSocketAddress(gatewayHost, gatewayPort));
-            System.out.println("Conectado ao Gateway em " + gatewayHost + ":" + gatewayPort);
+            socketChannel.configureBlocking(true);
+            connected = true;
+
+            System.out.println("Conectado ao Gateway: " + gatewayHost + ":" + gatewayPort);
+
             requestNewName();
-            new Thread(this::startReceiving).start();
+
+            receivingThread = new Thread(() -> {
+                startReceiving();
+            });
+
+            pingThread = new Thread(this::startPing);
+
+            receivingThread.start();
+            pingThread.start();
+
         } catch (IOException e) {
             System.err.println("Erro na comunicação com o Gateway: " + e.getMessage());
+            connected = false;
+        }
+    }
+
+    public void stopCommunication() {
+        try {
+            connected = false;
+            ID = originalID;
+            status = false;
+            if (socketChannel != null && socketChannel.isOpen()) {
+                socketChannel.close();
+            }
+            if (receivingThread != null) receivingThread.interrupt();
+            if (pingThread != null) pingThread.interrupt();
+
+        } catch (IOException e) {
+            System.err.println("Erro ao fechar conexão: " + e.getMessage());
+        }
+    }
+
+    public void startPing() {
+        while (connected) {
+            try {
+                Message ping = Message.newBuilder()
+                        .setSensorId(ID)
+                        .setStatus(true)
+                        .setPayload("ping")
+                        .setComando("ping")
+                        .build();
+
+                sendMessage(ping);
+                Thread.sleep(PING_INTERVAL);
+            } catch (IOException | InterruptedException e) {
+                System.err.println("ping falhou: " + e.getMessage());
+                connected = false;
+                break;
+            }
+        }
+    }
+
+    private void sendMessage(Message message) throws IOException {
+        byte[] messageBytes = message.toByteArray();
+        ByteBuffer buffer = ByteBuffer.allocate(4 + messageBytes.length);
+        buffer.putInt(messageBytes.length);
+        buffer.put(messageBytes);
+        buffer.flip();
+
+        while (buffer.hasRemaining()) {
+            socketChannel.write(buffer);
         }
     }
 
     public static void main(String[] args) {
         AC sensor = new AC();
-        sensor.discoverGateway();
-        sensor.startCommunication();
+    
+        while (true) {
+            if (!sensor.connected) {
+                sensor.discoverGateway();
+                sensor.startCommunication();
+            }
+    
+            try {
+                Thread.sleep(2000); // Espera para evitar reconexões muito rápidas
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+                break;
+            }
+    
+            if (!sensor.connected) {
+                sensor.stopCommunication();
+                System.out.println("Tentando reconectar...");
+            }
+        }
     }
+    
 }

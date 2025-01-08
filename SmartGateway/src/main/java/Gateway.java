@@ -75,14 +75,14 @@ public class Gateway {
                 SocketChannel sensorChannel = sensorServerChannel.accept();
                 System.out.println("Sensor TCP " + sensorChannel.getRemoteAddress() + " conectado.");
                 sensors.add(sensorChannel);
-                sensorThreadPool.submit(() -> handleSensor(sensorChannel));
+                sensorThreadPool.submit(() -> handleSensorMessage(sensorChannel));
             }
         } catch (IOException e) {
             System.out.println("Erro ao aceitar conexão de Sensor: " + e.getMessage());
         }
     }
 
-    private void handleSensor(SocketChannel sensorChannel) {
+    private void handleSensorMessage(SocketChannel sensorChannel) {
         try {
             ByteBuffer buffer = ByteBuffer.allocate(1024 * 2);
             while (true) {
@@ -109,10 +109,12 @@ public class Gateway {
                         String comando = message.getComando();
                         
                         System.out.println(sensorId);
-
-                        if (comando.equals("renomear")) {
-                            sensorId = sensorId + "_" + sufix;
-                            sufix = sufix + 1;
+                        if (comando.equals("ping")) {
+                            System.out.println("ping: " + message.getSensorId());
+                        }
+                        else if (comando.equals("renomear")) {
+                            sensorId = sensorId + "_" + sensorChannel.getRemoteAddress();
+                            //sufix = sufix + 1;
                             feedbackToSensor(sensorId, sensorChannel);
                             sensorMap.putIfAbsent(sensorId, sensorChannel);
 
@@ -146,7 +148,7 @@ public class Gateway {
                 SocketChannel clientChannel = clientServerChannel.accept();
                 System.out.println("Client TCP " + clientChannel.getRemoteAddress() + " conectado.");
                 clients.add(clientChannel);
-                new Thread(() -> handleClient(clientChannel)).start();
+                new Thread(() -> handleClientMessage(clientChannel)).start();
             }
         } catch (IOException e) {
             System.out.println("Erro ao aceitar conexão de Client: " + e.getMessage());
@@ -155,7 +157,7 @@ public class Gateway {
 
     //Aqui que a mensagem do cliente é lidada e enviada aos sensores    
     
-    private void handleClient(SocketChannel clientChannel) {
+    private void handleClientMessage(SocketChannel clientChannel) {
         try {
             ByteBuffer buffer = ByteBuffer.allocate(1024 * 2);
             while (true) {
@@ -185,7 +187,10 @@ public class Gateway {
                             //Aqui deve ser chamado o listar
                             listSensors(clientChannel);
                         }
-                        else{
+                        else if(message.getComando().equals("ping")){
+                            System.out.println("ping do client \n");
+                        }
+                        else {
                             sendMessageToSensor(message.getSensorId(), message); // Envio direto ao sensor pelo ID
                         }
 

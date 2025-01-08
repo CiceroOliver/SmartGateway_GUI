@@ -14,31 +14,50 @@ import com.google.protobuf.InvalidProtocolBufferException;
 import main.java.MessageOuterClass.Message;
 
 public class ClientGUI {
-    private Map<String, Set<String>> sensorCommands = new HashMap<>(); // Armazena sensorId e seus comandos
+    private Map<String, Set<String>> sensorCommands = new HashMap<>();
     private SocketChannel clientChannel;
     private JTextArea receivedLogArea;
-    private JTextArea sentMessagesLogArea; // Novo log para mensagens enviadas
+    private JTextArea sentMessagesLogArea;
     private JComboBox<String> sensorDropdown;
     private JComboBox<String> commandDropdown;
-    
-    //private JTextField commandField;
     private JTextField payloadField;
+    private JButton reconnectButton;
     private ExecutorService executorService;
 
-    public ClientGUI() throws IOException {
-        clientChannel = SocketChannel.open();
-        clientChannel.connect(new java.net.InetSocketAddress("127.0.0.1", 4000));
-        executorService = Executors.newFixedThreadPool(3); // 3 threads, uma para enviar e outra para receber
+    public ClientGUI() {
+        executorService = Executors.newFixedThreadPool(3); // Threads para envio, recebimento e outros
     }
 
     public static void main(String[] args) {
-        try {
-            new ClientGUI().createAndShowGUI();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        SwingUtilities.invokeLater(() -> {
+            ClientGUI client = new ClientGUI();
+            client.createAndShowGUI();
+            client.connectToServer();
+        });
     }
 
+    private void connectToServer() {
+        executorService.submit(() -> {
+            try {
+                clientChannel = SocketChannel.open();
+                clientChannel.connect(new java.net.InetSocketAddress("127.0.0.1", 4000));
+                SwingUtilities.invokeLater(() -> {
+                    receivedLogArea.append("Conectado ao servidor.\n");
+                    reconnectButton.setEnabled(false);
+                });
+                startListenerThread();
+                startConnectionMonitor(); // Inicia o monitoramento após a conexão
+            } catch (IOException e) {
+                SwingUtilities.invokeLater(() -> {
+                    receivedLogArea.append("Erro ao conectar ao servidor: " + e.getMessage() + "\n");
+                    reconnectButton.setEnabled(true);
+                });
+            }
+        });
+    }
+    
+    
+    
     private void createAndShowGUI() {
         JFrame frame = new JFrame("Client GUI");
         frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
@@ -156,7 +175,7 @@ public class ClientGUI {
             }
         });
         gbc.gridx = 0;
-        gbc.gridy = 7; // Colocando o botão de limpeza abaixo do log
+        gbc.gridy = 7;
         panel.add(clearButton, gbc);
     
         // Log for received messages label
@@ -190,16 +209,123 @@ public class ClientGUI {
         gbc.gridx = 1;
         gbc.gridy = 7; // Colocando o botão de limpeza abaixo do log de mensagens enviadas
         panel.add(clearSentMessagesButton, gbc);
-    
+
+        //criando o botão reconexão;
+        reconnectButton = new JButton("Reconectar");
+        reconnectButton.setEnabled(true); // Inicialmente desabilitado
+        reconnectButton.addActionListener(new ActionListener() {
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                reconnectToServer();
+            }
+        });
+        gbc.gridx = 0;
+        gbc.gridy = 8;
+        panel.add(reconnectButton, gbc);
+        
         frame.getContentPane().add(panel);
         frame.setVisible(true);
     
         // Start the listener thread
         startListenerThread();
     }
-    
-    
 
+    private void startConnectionMonitor() {
+        executorService.submit(() -> {
+            //SwingUtilities.invokeLater(() -> receivedLogArea.append("Thread de monitoramento iniciada.\n"));
+            
+            while (true) {
+                try {
+                    if (clientChannel == null || !clientChannel.isOpen() || !clientChannel.isConnected()) {
+                        SwingUtilities.invokeLater(() -> {
+                            receivedLogArea.append("Conexão perdida. Habilitando botão de reconexão.\n");
+                            reconnectButton.setEnabled(true);
+                        });
+                        Thread.sleep(5000); // Espera antes de tentar novamente
+                        continue; // Não sai do loop, continua verificando
+                    }
+        
+                    //SwingUtilities.invokeLater(() -> receivedLogArea.append("Enviando heartbeat...\n"));
+                    sendPing(); // Tenta enviar um ping
+                    //SwingUtilities.invokeLater(() -> receivedLogArea.append("Heartbeat enviado com sucesso.\n"));
+        
+                    Thread.sleep(5000); // Aguarda 5 segundos
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                    //SwingUtilities.invokeLater(() -> receivedLogArea.append("Thread de monitoramento interrompida.\n"));
+                    break;
+                } catch (IOException e) {
+                    SwingUtilities.invokeLater(() -> {
+                        receivedLogArea.append("Conexão perdida. Habilitando botão de reconexão. \n");
+                        reconnectButton.setEnabled(true);
+                    });
+                    try {
+                        clientChannel.close(); // Fecha explicitamente para garantir estado consistente
+                    } catch (IOException ex) {
+                        SwingUtilities.invokeLater(() -> receivedLogArea.append("Erro ao fechar canal após falha: " + ex.getMessage() + "\n"));
+                    }
+                    try {
+                        Thread.sleep(5000);
+                    } catch (InterruptedException e1) {
+                        e1.printStackTrace();
+                    } // Espera antes de tentar novamente
+                } catch (Exception e) {
+                    SwingUtilities.invokeLater(() -> {
+                        receivedLogArea.append("Erro inesperado no monitoramento: " + e.getMessage() + "\n");
+                    });
+                }
+            }
+        });
+    }
+    
+    
+    
+    
+    private void sendPing() throws IOException {
+        if (clientChannel != null && clientChannel.isOpen() && clientChannel.isConnected()) {
+            Message pingMessage = Message.newBuilder()
+                    .setSensorId("ping")
+                    .setComando("ping")
+                    .setStatus(true)
+                    .setPayload("ping")
+                    .build();
+    
+            byte[] messageBytes = pingMessage.toByteArray();
+            ByteBuffer writeBuffer = ByteBuffer.allocate(4 + messageBytes.length);
+            writeBuffer.putInt(messageBytes.length);
+            writeBuffer.put(messageBytes);
+            writeBuffer.flip();
+    
+            while (writeBuffer.hasRemaining()) {
+                clientChannel.write(writeBuffer);
+            }
+    
+            //SwingUtilities.invokeLater(() -> receivedLogArea.append("Ping enviado manualmente.\n"));
+        } else {
+            SwingUtilities.invokeLater(() -> receivedLogArea.append("Canal não está aberto ou conectado.\n"));
+            throw new IOException("Canal não está mais aberto.");
+        }
+    }
+    
+    
+    
+    
+    private void reconnectToServer() {
+        try {
+            if (clientChannel != null && clientChannel.isOpen()) {
+                clientChannel.close();
+            }
+            clientChannel = SocketChannel.open();
+            clientChannel.connect(new java.net.InetSocketAddress("127.0.0.1", 4000));
+            sentMessagesLogArea.append("Reconexão bem-sucedida!\n");
+            receivedLogArea.setText("");
+            reconnectButton.setEnabled(false);
+            startListenerThread();
+        } catch (IOException ex) {
+            sentMessagesLogArea.append("Falha ao reconectar: " + ex.getMessage() + "\n");
+        }
+    }
+    
 
     private void listSensors() throws IOException {
         sendMessageToServer("Gateway", "listar", "null");
@@ -298,7 +424,7 @@ public class ClientGUI {
                     }
                 }
             } catch (IOException e) {
-                receivedLogArea.append("Erro na conexão: " + e.getMessage() + "\n");
+                receivedLogArea.append("Erro na conexão: \n");
             }
         });
     }
@@ -332,12 +458,12 @@ public class ClientGUI {
         });
     }
 
-    // Método auxiliar para enviar mensagem para o servidor
+    // Método auxiliar para enviar mensagens de descoberta de sensores e seus comandos para o servidor
     private void sendMessageToServer(String sensorId, String comando, String payload) throws IOException {
         Message message = Message.newBuilder()
                 .setSensorId(sensorId)
                 .setComando(comando)
-                .setStatus(false) // Supondo que o status seja false
+                .setStatus(false)
                 .setPayload(payload)
                 .build();
 
