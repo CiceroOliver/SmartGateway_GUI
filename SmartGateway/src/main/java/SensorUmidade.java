@@ -218,7 +218,7 @@ public class SensorUmidade {
 
                 Message message = Message.parseFrom(data);
 
-                System.out.println("Mensagem recebida: " + message.getPayload());
+                System.out.println("Comando recebido: " + message.getComando());
 
                 // Processamento das mensagens
                 String comando = message.getComando();

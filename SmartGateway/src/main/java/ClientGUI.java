@@ -23,6 +23,8 @@ public class ClientGUI {
     private JTextField payloadField;
     private JButton reconnectButton;
     private ExecutorService executorService;
+    private volatile boolean isMonitoring = false;
+
 
     public ClientGUI() {
         executorService = Executors.newFixedThreadPool(3); // Threads para envio, recebimento e outros
@@ -231,52 +233,39 @@ public class ClientGUI {
     }
 
     private void startConnectionMonitor() {
+        if (isMonitoring) return; // Evita iniciar múltiplas threads de monitoramento
+    
+        isMonitoring = true; // Inicia monitoramento
         executorService.submit(() -> {
-            //SwingUtilities.invokeLater(() -> receivedLogArea.append("Thread de monitoramento iniciada.\n"));
-            
-            while (true) {
+            while (isMonitoring) {
                 try {
                     if (clientChannel == null || !clientChannel.isOpen() || !clientChannel.isConnected()) {
                         SwingUtilities.invokeLater(() -> {
-                            receivedLogArea.append("Conexão perdida. Habilitando botão de reconexão.\n");
+                            receivedLogArea.append("Conexão perdida. Tentando reconectar...\n");
                             reconnectButton.setEnabled(true);
                         });
-                        Thread.sleep(5000); // Espera antes de tentar novamente
-                        continue; // Não sai do loop, continua verificando
+                        Thread.sleep(5000); // Aguarda antes de tentar novamente
+                        continue;
                     }
-        
-                    //SwingUtilities.invokeLater(() -> receivedLogArea.append("Enviando heartbeat...\n"));
-                    sendPing(); // Tenta enviar um ping
-                    //SwingUtilities.invokeLater(() -> receivedLogArea.append("Heartbeat enviado com sucesso.\n"));
-        
-                    Thread.sleep(5000); // Aguarda 5 segundos
+    
+                    sendPing(); // Envia ping para verificar conexão
+                    Thread.sleep(5000); // Intervalo entre pings
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
-                    //SwingUtilities.invokeLater(() -> receivedLogArea.append("Thread de monitoramento interrompida.\n"));
+                    SwingUtilities.invokeLater(() -> receivedLogArea.append("Monitoramento interrompido.\n"));
                     break;
                 } catch (IOException e) {
                     SwingUtilities.invokeLater(() -> {
-                        receivedLogArea.append("Conexão perdida. Habilitando botão de reconexão. \n");
+                        receivedLogArea.append("Erro ao enviar ping. Reiniciando conexão...\n");
                         reconnectButton.setEnabled(true);
                     });
-                    try {
-                        clientChannel.close(); // Fecha explicitamente para garantir estado consistente
-                    } catch (IOException ex) {
-                        SwingUtilities.invokeLater(() -> receivedLogArea.append("Erro ao fechar canal após falha: " + ex.getMessage() + "\n"));
-                    }
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException e1) {
-                        e1.printStackTrace();
-                    } // Espera antes de tentar novamente
-                } catch (Exception e) {
-                    SwingUtilities.invokeLater(() -> {
-                        receivedLogArea.append("Erro inesperado no monitoramento: " + e.getMessage() + "\n");
-                    });
+                    isMonitoring = false; // Para monitoramento antes de reconectar
+                    reconnectToServer();
                 }
             }
         });
     }
+    
     
     
     
@@ -307,24 +296,27 @@ public class ClientGUI {
         }
     }
     
-    
-    
-    
     private void reconnectToServer() {
-        try {
-            if (clientChannel != null && clientChannel.isOpen()) {
-                clientChannel.close();
+        isMonitoring = false; // Para a thread de monitoramento atual
+        executorService.submit(() -> {
+            try {
+                if (clientChannel != null && clientChannel.isOpen()) {
+                    clientChannel.close();
+                }
+                clientChannel = SocketChannel.open();
+                clientChannel.connect(new java.net.InetSocketAddress("127.0.0.1", 4000));
+                SwingUtilities.invokeLater(() -> {
+                    receivedLogArea.append("Reconexão bem-sucedida!\n");
+                    reconnectButton.setEnabled(false);
+                });
+                startListenerThread();
+                startConnectionMonitor(); // Reinicia o monitoramento
+            } catch (IOException ex) {
+                SwingUtilities.invokeLater(() -> receivedLogArea.append("Falha ao reconectar: " + ex.getMessage() + "\n"));
             }
-            clientChannel = SocketChannel.open();
-            clientChannel.connect(new java.net.InetSocketAddress("127.0.0.1", 4000));
-            sentMessagesLogArea.append("Reconexão bem-sucedida!\n");
-            receivedLogArea.setText("");
-            reconnectButton.setEnabled(false);
-            startListenerThread();
-        } catch (IOException ex) {
-            sentMessagesLogArea.append("Falha ao reconectar: " + ex.getMessage() + "\n");
-        }
+        });
     }
+    
     
 
     private void listSensors() throws IOException {
