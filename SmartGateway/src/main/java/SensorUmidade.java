@@ -141,7 +141,7 @@ public class SensorUmidade {
         }
     }
 
-    public void enviarAtualizacao() {
+    public void sendUpdate() {
         try {
             String payload;
             String comando;
@@ -188,7 +188,7 @@ public class SensorUmidade {
                 try {
                     double variacao = random.nextDouble() * 0.8 * (random.nextBoolean() ? -1 : 1);
                     Umidade += variacao;
-                    enviarAtualizacao();
+                    sendUpdate();
                 } catch (Exception e) {
                     System.err.println("Erro ao enviar mensagem: " + e.getMessage());
                     connected = false;
@@ -225,24 +225,24 @@ public class SensorUmidade {
                 
                 if ("ligar".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
                     status = true;
-                    enviarAtualizacao();
+                    sendUpdate();
                 } 
                 else if ("desligar".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
                     status = false;
-                    enviarAtualizacao();
+                    sendUpdate();
                 }
 
                 else if ("listar".equalsIgnoreCase(comando)){
                     lista = true;
-                    enviarAtualizacao();
+                    sendUpdate();
                 }
                 else if ("listar comandos".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))){
                     lista = true;
-                    enviarAtualizacao();
+                    sendUpdate();
                 }
 
                 else if ("status".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
-                    enviarAtualizacao();
+                    sendUpdate();
                 }
                 else if("renomear".equals(comando)){
                     ID = message.getPayload();
@@ -297,3 +297,4 @@ public class SensorUmidade {
         }
     }
 }
+

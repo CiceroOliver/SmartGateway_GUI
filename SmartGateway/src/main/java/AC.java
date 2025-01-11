@@ -183,7 +183,7 @@ public class AC {
         }   
     }
 
-    public void enviarAtualizacao(){
+    public void sendUpdate(){
         try {
             // Criar a mensagem no formato id:status:payload
             String payload, comando;
@@ -249,7 +249,7 @@ public class AC {
             String received = new String(packet.getData(), 0, packet.getLength());
             System.out.println("Mensagem multicast recebida: " + received);
     
-            // Agora a mensagem é esperada no formato "127.0.0.1:4000"
+            // Agora a mensagem é esperada no formato "0.0.0.0:4000"
             String[] addressParts = received.split(":");
     
             if (addressParts.length == 2) {
@@ -293,7 +293,7 @@ public class AC {
                     try {
                         Message message = Message.parseFrom(data);  // Desserializa a mensagem
 
-                        // Exibe os valores dos campos da mensagem
+                       
                         System.out.println("Mensagem recebida do Gateway:");
                         System.out.println("ID do Sensor: " + message.getSensorId());
                         System.out.println("Status do Sensor: " + message.getStatus());
@@ -306,30 +306,30 @@ public class AC {
                         }
                         else if ("listar".equalsIgnoreCase(comando)){
                             lista = true;
-                            enviarAtualizacao();
+                            sendUpdate();
                             
                             System.out.println("Entrou");
                         }
 
                         else if ("listar comandos".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))){
                             lista = true;
-                            enviarAtualizacao();
+                            sendUpdate();
                         }
 
                         else if ("status".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
-                            enviarAtualizacao();
+                            sendUpdate();
                         }
 
                         else if ("ligar".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
                             status = true;
                             System.out.println("Sensor ligado.");
-                            enviarAtualizacao();
+                            sendUpdate();
                             
                         } 
                         else if ("desligar".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
                             status = false;
                             System.out.println("Sensor desligado.");
-                            enviarAtualizacao();
+                            sendUpdate();
                             
                         }
                         
@@ -341,7 +341,7 @@ public class AC {
                                         setModo(message.getPayload());
                                         modeSelected = true;
                                         found = true;
-                                        enviarAtualizacao();
+                                        sendUpdate();
                                     }
                                 }
                                 if (!found) {
@@ -354,13 +354,13 @@ public class AC {
 
                         else if("temperatura".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))){
                             if(status){
-                                String payload = message.getPayload(); // Exemplo: "25"
+                                String payload = message.getPayload(); 
                                 boolean formatoValidoTemp;
                                 try {
                                     formatoValidoTemp = setTemperatura(Integer.parseInt(payload.trim()));
                                     if (formatoValidoTemp) {
                                         Temperatura = Integer.parseInt(payload.trim());
-                                        enviarAtualizacao();
+                                        sendUpdate();
                                     }
                                     else{
                                         invalideTemperature();
@@ -377,13 +377,13 @@ public class AC {
 
                         else if ("fanspeed".equalsIgnoreCase(comando) && (message.getSensorId().equals(ID))) {
                             if(status){
-                                String payload = message.getPayload(); // Exemplo: "25"
+                                String payload = message.getPayload(); 
                                 boolean formatoValidoSpeed;
                                 try {
                                     formatoValidoSpeed = setFanSpeed(Integer.parseInt(payload.trim()));
                                     if (formatoValidoSpeed) {
                                         FanSpeed = Integer.parseInt(payload.trim());
-                                        enviarAtualizacao();
+                                        sendUpdate();
                                     }
                                     else{
                                         invalideFanSpeed();

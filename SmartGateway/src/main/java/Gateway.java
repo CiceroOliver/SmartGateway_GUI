@@ -14,17 +14,17 @@ import main.java.MessageOuterClass.Message; // Importação da classe Message ge
 public class Gateway {
     public static final int CLIENT_PORT = 4000; // Porta para o Client
     public static final int SENSOR_PORT = 5000; // Porta para os Sensores
-    public static final String HOSTNAME = "0.0.0.0";
-    public static final String MULTICAST_GROUP = "230.0.0.0";
+    public static final String HOSTNAME = "0.0.0.0"; // Aceita a conexão de todas as interfaces disponíveis
+    public static final String MULTICAST_GROUP = "230.0.0.0"; //IP multicast
     public static final int MULTICAST_PORT = 6000; // Porta para a comunicação multicast
-    private volatile int sufix = 1;
 
-    private ServerSocketChannel sensorServerChannel;
-    private ServerSocketChannel clientServerChannel;
 
-    private List<SocketChannel> sensors = Collections.synchronizedList(new ArrayList<>());
+    private ServerSocketChannel sensorServerChannel; // Ele é usado para estabelecer a conexão TCP com sensores
+    private ServerSocketChannel clientServerChannel; // Ele é usado para estabelecer a conexão TCP com os clientes
+
+    private List<SocketChannel> sensors = Collections.synchronizedList(new ArrayList<>()); // É utilizada para que evitar acesso concorrente à regiões críticas
     private List<SocketChannel> clients = Collections.synchronizedList(new ArrayList<>());
-    private Map<String, SocketChannel> sensorMap = new ConcurrentHashMap<>(); // Mapa de sensores sincronizado
+    private Map<String, SocketChannel> sensorMap = new ConcurrentHashMap<>(); // Mapa de sensores sincronizado, possue os ID dos sensores ativos e seus sockets
 
     private ExecutorService sensorThreadPool = Executors.newFixedThreadPool(10); // Até 10 sensores simultâneos
 
@@ -75,7 +75,7 @@ public class Gateway {
                 SocketChannel sensorChannel = sensorServerChannel.accept();
                 System.out.println("Sensor TCP " + sensorChannel.getRemoteAddress() + " conectado.");
                 sensors.add(sensorChannel);
-                sensorThreadPool.submit(() -> handleSensorMessage(sensorChannel));
+                sensorThreadPool.submit(() -> handleSensorMessage(sensorChannel)); //invoca thread para lidar com o sensor ingressante
             }
         } catch (IOException e) {
             System.out.println("Erro ao aceitar conexão de Sensor: " + e.getMessage());
@@ -346,7 +346,6 @@ public class Gateway {
             }
         }
    
-        // Debug: Print dos sensores antes de enviar
         System.out.println("Sensores listados: " + sensorIds.toString());
     
         // Criando a mensagem com os IDs dos sensores no campo 'payload'
@@ -385,3 +384,6 @@ public class Gateway {
         }
     }
 }
+
+
+

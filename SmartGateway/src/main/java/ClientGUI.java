@@ -97,7 +97,7 @@ public class ClientGUI {
         gbc.anchor = GridBagConstraints.WEST;
         panel.add(listButton, gbc);
     
-        // Dropdown for selecting a sensor
+        // Opções do sensores ativos aqui (Ou ativos até o momento do listar)
         sensorDropdown = new JComboBox<>();
         sensorDropdown.setEditable(false);
         sensorDropdown.addActionListener(new ActionListener() {
@@ -121,7 +121,7 @@ public class ClientGUI {
         gbc.gridx = 1;
         panel.add(sensorDropdown, gbc);
     
-        // Dropdown for selecting a command
+        // Opões dos comandos do sensor
         commandDropdown = new JComboBox<>();
         commandDropdown.setEditable(false);
         gbc.gridx = 0;
@@ -131,7 +131,7 @@ public class ClientGUI {
         gbc.gridx = 1;
         panel.add(commandDropdown, gbc);
     
-        // Payload label and field
+        // Campo do payload
         JLabel payloadLabel = new JLabel("Payload:");
         gbc.gridx = 0;
         gbc.gridy = 3;
@@ -141,7 +141,7 @@ public class ClientGUI {
         gbc.gridx = 1;
         panel.add(payloadField, gbc);
     
-        // Send message button
+        // Botão de enviar a mensagem
         JButton sendButton = new JButton("Enviar Mensagem");
         sendButton.addActionListener(new ActionListener() {
             @Override
@@ -158,17 +158,17 @@ public class ClientGUI {
         gbc.gridy = 4;
         panel.add(sendButton, gbc);
     
-        // Log area
+        // Log das mensagens recebidas pelo sensor
         receivedLogArea = new JTextArea(15, 40);
         receivedLogArea.setEditable(false);
         JScrollPane logScroll = new JScrollPane(receivedLogArea);
         gbc.gridx = 0;
-        gbc.gridy = 6; // Aumentar o valor de y para deslocar o log do servidor para baixo
+        gbc.gridy = 6;
         gbc.gridwidth = 1;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         panel.add(logScroll, gbc);
     
-        // Clear log button for server messages
+        // Botão para limpar o log do servidor
         JButton clearButton = new JButton("Limpar Log Server");
         clearButton.addActionListener(new ActionListener() {
             @Override
@@ -180,27 +180,27 @@ public class ClientGUI {
         gbc.gridy = 7;
         panel.add(clearButton, gbc);
     
-        // Log for received messages label
+        // Label do log das mensagens recebidas
         JLabel receivedLogLabel = new JLabel("Log do Servidor:");
         gbc.gridx = 0;
-        gbc.gridy = 5; // Aumentar o valor de y para deslocar o rótulo do log para baixo
+        gbc.gridy = 5; 
         panel.add(receivedLogLabel, gbc);
     
         // Novo Log: Mensagens Enviadas
         JLabel sentLogLabel = new JLabel("Log de Mensagens Enviadas:");
         gbc.gridx = 1;
-        gbc.gridy = 5; // Ajustado para manter o log lado a lado
+        gbc.gridy = 5;
         panel.add(sentLogLabel, gbc);
     
-        // Sent messages log area
+        // Log das mensagens enviadas pela GUI
         sentMessagesLogArea = new JTextArea(15, 40);
         sentMessagesLogArea.setEditable(false);
         JScrollPane sentLogScroll = new JScrollPane(sentMessagesLogArea);
         gbc.gridx = 1;
-        gbc.gridy = 6; // Aumentar o valor de y para deslocar o log das mensagens enviadas para baixo
+        gbc.gridy = 6;
         panel.add(sentLogScroll, gbc);
     
-        // Clear sent messages log button
+        // Botão para limpar o log das mensagens enviadas
         JButton clearSentMessagesButton = new JButton("Limpar Log Enviado");
         clearSentMessagesButton.addActionListener(new ActionListener() {
             @Override
@@ -209,12 +209,12 @@ public class ClientGUI {
             }
         });
         gbc.gridx = 1;
-        gbc.gridy = 7; // Colocando o botão de limpeza abaixo do log de mensagens enviadas
+        gbc.gridy = 7;
         panel.add(clearSentMessagesButton, gbc);
 
-        //criando o botão reconexão;
+        //Botão reconexão;
         reconnectButton = new JButton("Reconectar");
-        reconnectButton.setEnabled(true); // Inicialmente desabilitado
+        reconnectButton.setEnabled(true);
         reconnectButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
@@ -228,14 +228,14 @@ public class ClientGUI {
         frame.getContentPane().add(panel);
         frame.setVisible(true);
     
-        // Start the listener thread
+        //Thread para escutar o server
         startListenerThread();
     }
 
     private void startConnectionMonitor() {
         if (isMonitoring) return; // Evita iniciar múltiplas threads de monitoramento
     
-        isMonitoring = true; // Inicia monitoramento
+        isMonitoring = true; // Possibilita o monitoramento da conexão
         executorService.submit(() -> {
             while (isMonitoring) {
                 try {
@@ -244,7 +244,7 @@ public class ClientGUI {
                             receivedLogArea.append("Conexão perdida. Tentando reconectar...\n");
                             reconnectButton.setEnabled(true);
                         });
-                        Thread.sleep(5000); // Aguarda antes de tentar novamente
+                        Thread.sleep(5000);
                         continue;
                     }
     
@@ -256,10 +256,10 @@ public class ClientGUI {
                     break;
                 } catch (IOException e) {
                     SwingUtilities.invokeLater(() -> {
-                        receivedLogArea.append("Erro ao enviar ping. Reiniciando conexão...\n");
+                        receivedLogArea.append("Erro ao contatar gateway. Reiniciando conexão...\n");
                         reconnectButton.setEnabled(true);
                     });
-                    isMonitoring = false; // Para monitoramento antes de reconectar
+                    isMonitoring = false; // Pausa o monitoramento antes de reconectar
                     reconnectToServer();
                 }
             }
@@ -297,7 +297,7 @@ public class ClientGUI {
     }
     
     private void reconnectToServer() {
-        isMonitoring = false; // Para a thread de monitoramento atual
+        isMonitoring = false; // Dá uma pausa na thread de monitoramento atual
         executorService.submit(() -> {
             try {
                 if (clientChannel != null && clientChannel.isOpen()) {
@@ -407,7 +407,6 @@ public class ClientGUI {
                                 }else{
                                     receivedLogArea.append("Status: Desligado" + "\n");
                                 }
-                                //logArea.append("Comando: " + message.getComando() + "\n");
                                 receivedLogArea.append("Payload: " + message.getPayload() + "\n");
                                 receivedLogArea.append("-----------------------------------------------------------------------------------------------\n");
                                 break;
@@ -479,3 +478,5 @@ public class ClientGUI {
         });
     }
 }
+
+
